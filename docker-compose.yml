@@ -1,0 +1,61 @@
+version: '3.8'
+
+# Services
+services:
+
+  # Nginx Service
+  nginx:
+    image: nginx:latest
+    ports:
+      - 80:80
+    volumes:
+      - ./src:/var/www/app
+      - ./.docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - php
+
+  # PHP Service
+  php:
+    image: php:8.2-fpm
+    working_dir: /var/www/app
+    volumes:
+      - ./src:/var/www/app
+
+  # MySQL Service
+  mysql:
+    image: mysql/mysql-server:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: project
+    volumes:
+      - ./.docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD
+      interval: 5s
+      retries: 10
+
+  # PhpMyAdmin Service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # composer service
+  composer:
+    image: composer:2.5.5
+    command: ["composer", "install"]
+    volumes:
+      - .:/var/www/app
+
+
+# Volumes
+volumes:
+
+  mysqldata:
